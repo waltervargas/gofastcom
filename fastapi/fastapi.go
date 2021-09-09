@@ -2,27 +2,48 @@ package fastclient
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 
 	"golang.org/x/net/html"
 )
 
 type Client struct {
-	apiURL string
 	baseURL string
+	apiURL string
 	maxRequests int
 	maxTime int
-	ocaURLs []string
+	oca *OCA
 	userAgent string
+}
+
+type OCA struct {
+	Client struct {
+		IP       string `json:"ip"`
+		Asn      string `json:"asn"`
+		Location struct {
+			City    string `json:"city"`
+			Country string `json:"country"`
+		} `json:"location"`
+	} `json:"client"`
+	Targets []struct {
+		Name     string `json:"name"`
+		URL      string `json:"url"`
+		Location struct {
+			City    string `json:"city"`
+			Country string `json:"country"`
+		} `json:"location"`
+	} `json:"targets"`
 }
 
 var (
 	errScriptNotFound = errors.New("unable to get script path")
 	errTokenNotFound = errors.New("unable to get token")
+
+	oca OCA
 )
 
 const (
@@ -41,22 +62,21 @@ func New(maxReq, maxTime int) (*Client, error) {
 
 	t, err := getToken(baseURL)
 	if err != nil {
-		return nil, errTokenNotFound
+		return nil, err
 	}
 	c.apiURL = fmt.Sprintf("%s?https=true&token=%s", apiURL, t)
 
-	ocas, err := c.getOCAs()
+	oca, err := c.getOCAs()
 	if err != nil {
 		return nil, err
 	}
-	c.ocaURLs = ocas
+	c.oca = oca
 
 	return &c, nil
 }
 
-// TODO: Get list of urls from base url
-func (c Client) getOCAs() ([]string, error) {
-	var ocas []string
+func (c Client) getOCAs() (*OCA, error) {
+	var oca OCA
 
 	resp, err := http.Get(c.apiURL)
 	if err != nil {
@@ -64,31 +84,47 @@ func (c Client) getOCAs() ([]string, error) {
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
-	fmt.Println(string(body))
+	if err != nil {
+		return nil, err
+	}
 
-	return ocas, nil
+	err = json.Unmarshal(body, &oca)
+	if err != nil {
+		return nil, err
+	}
+
+	return &oca, nil
 }
 
-func getToken(baseURL string) (string, error) {
-	base, err := http.Get(url)
+func getToken(baseURL string) ([]byte, error) {
+	baseResp, err := http.Get(baseURL)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	defer b.Body.Close()
+	defer baseResp.Body.Close()
 
-	path, err := getScriptPath(resp.Body)
+	path, err := getScriptPath(baseResp.Body)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	, err := http.Get(fmt.Sprintf("%s%s", url, path))
+	scriptResp, err := http.Get(fmt.Sprintf("%s%s", baseURL, path))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	defer resp.
+	defer scriptResp.Body.Close()
 
+	scriptBody, err := io.ReadAll(scriptResp.Body)
+	if err != nil {
+		return nil, err
+	}
 
-	t := getTokenFromScriptBody(b)
+	t := getTokenFromScriptBody(scriptBody)
+	if t == nil {
+		return nil, errTokenNotFound
+	}
+
+	return t, nil
 }
 
 func getTokenFromScriptBody(b []byte) []byte {
