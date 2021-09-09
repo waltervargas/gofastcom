@@ -4,14 +4,8 @@ import (
 	"fmt"
 	"log"
 
-	// "github.com/waltervargas/gofastcom/fast"
 	"github.com/waltervargas/gofastcom/fastapi"
 )
-
-// func main() {https://api.fast.com/netflix/speedtest/v2
-// 	bps, err := fast.Measure()
-// 	fmt.Println(bps/125000, "mbps", err)
-// }
 
 const (
 	maxRequest = 1
@@ -23,5 +17,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(client)
+
+	for _, c := range client.OCA.Targets {
+		fmt.Printf("city: %s, url: %s\n", c.Location.City, c.URL)
+	}
 }

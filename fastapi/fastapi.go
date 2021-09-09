@@ -16,7 +16,7 @@ type Client struct {
 	apiURL string
 	maxRequests int
 	maxTime int
-	oca *OCA
+	OCA *OCA
 	userAgent string
 }
 
@@ -42,8 +42,6 @@ type OCA struct {
 var (
 	errScriptNotFound = errors.New("unable to get script path")
 	errTokenNotFound = errors.New("unable to get token")
-
-	oca OCA
 )
 
 const (
@@ -70,7 +68,7 @@ func New(maxReq, maxTime int) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	c.oca = oca
+	c.OCA = oca
 
 	return &c, nil
 }
